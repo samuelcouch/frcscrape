@@ -239,7 +239,7 @@ func getDoc(url string) (*goquery.Document, error) {
 		return res, nil
 	case err := <-errChan:
 		return nil, err
-	case <-time.After(time.Second * 3):
+	case <-time.After(time.Second * 10):
 		return nil, errors.New("Timed out getting " + url)
 	}
 }
