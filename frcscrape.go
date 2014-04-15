@@ -4,6 +4,7 @@ package frcscrape
 import (
 	"github.com/PuerkitoBio/goquery"
 	"fmt"
+	"time"
 	"strings"
 	"strconv"
 	"errors"
@@ -76,7 +77,7 @@ func getCodeForEvent(eventCode string) string {
 func ScrapeAllianceSelections(eventCode string, year int) (map[int][]string, error) {
 	url := fmt.Sprintf("http://www2.usfirst.org/%dcomp/events/%s/scheduleelim.html", year, getCodeForEvent(eventCode))
 	
-	doc, err := goquery.NewDocument(url)
+	doc, err := getDoc(url)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +108,7 @@ func ScrapeAllianceSelections(eventCode string, year int) (map[int][]string, err
 func ScrapeAwardsForEvent(eventCode string, year int) ([]Award, error) {
 	url := fmt.Sprintf("http://www2.usfirst.org/%dcomp/events/%s/awards.html", year, getCodeForEvent(eventCode))
 
-	doc, err := goquery.NewDocument(url)
+	doc, err := getDoc(url)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +147,7 @@ func ScrapeTeamsForEvent(eventCode string, year int) ([]string, error) {
 		url = fmt.Sprintf("https://my.usfirst.org/myarea/index.lasso?page=teamlist&event_type=FRC&sort_teams=number&year=%d&event=%s", year, eventCode)
 	}
 
-	doc, err := goquery.NewDocument(url)
+	doc, err := getDoc(url)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +190,7 @@ func scrapeAdvanceMatch(eventCode, matchNumber string, year, round int) (Match, 
 
 	url := fmt.Sprintf("http://www2.usfirst.org/%dcomp/events/%s/matchresults.html", year, getCodeForEvent(eventCode))
 
-	doc, err := goquery.NewDocument(url)
+	doc, err := getDoc(url)
 	if err != nil {
 		return Match{}, err
 	}
@@ -221,4 +222,24 @@ func scrapeAdvanceMatch(eventCode, matchNumber string, year, round int) (Match, 
 	}
 
 	return m, nil
+}
+
+func getDoc(url string) (*goquery.Document, error) {
+	docChan := make(chan *goquery.Document, 1)
+	errChan := make(chan error, 1)
+	go func() {
+		doc, err := goquery.NewDocument(url)
+		if err != nil {
+			errChan <- err
+		}
+		docChan <- doc
+	}()
+	select {
+	case res := <-docChan:
+		return res, nil
+	case err := <-errChan:
+		return nil, err
+	case <-time.After(time.Second * 3):
+		return nil, errors.New("Timed out getting " + url)
+	}
 }
