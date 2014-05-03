@@ -2,19 +2,19 @@
 package frcscrape
 
 import (
-	"github.com/PuerkitoBio/goquery"
-	"fmt"
-	"time"
-	"strings"
-	"strconv"
 	"errors"
+	"fmt"
+	"github.com/PuerkitoBio/goquery"
+	"strconv"
+	"strings"
+	"time"
 )
 
 var cmpStrings = map[string]string{
-	"arc":"archimedes",
-	"cur":"curie",
-	"gal":"galileo",
-	"new":"newton",
+	"arc": "archimedes",
+	"cur": "curie",
+	"gal": "galileo",
+	"new": "newton",
 }
 
 type Award struct {
@@ -23,12 +23,12 @@ type Award struct {
 }
 
 type Match struct {
-	MatchNumber 	string
-	RedAlliance 	[]string
-	BlueAlliance 	[]string
+	MatchNumber  string
+	RedAlliance  []string
+	BlueAlliance []string
 }
 
-type NoData struct {}
+type NoData struct{}
 
 var ErrNoData = errors.New("No data for event")
 
@@ -57,10 +57,9 @@ func trimWhitespace(s string) string {
 	return strings.Replace(strings.TrimSpace(s), "\n", "", -1)
 }
 
-
 func removeUnicode(s string) string {
 	q := filter([]byte(s), func(b byte) bool {
-		return b <= 127	
+		return b <= 127
 	})
 	return string(q)
 }
@@ -76,7 +75,7 @@ func getCodeForEvent(eventCode string) string {
 
 func ScrapeAllianceSelections(eventCode string, year int) (map[int][]string, error) {
 	url := fmt.Sprintf("http://www2.usfirst.org/%dcomp/events/%s/scheduleelim.html", year, getCodeForEvent(eventCode))
-	
+
 	doc, err := getDoc(url)
 	if err != nil {
 		return nil, err
@@ -98,7 +97,7 @@ func ScrapeAllianceSelections(eventCode string, year int) (map[int][]string, err
 		m[allianceNums[i]] = info.Slice(0, 3).Map(func(j int, q *goquery.Selection) string {
 			return trimWhitespace(q.Text())
 		})
-		m[allianceNums[8 - i]] = info.Slice(3, 6).Map(func(j int, q *goquery.Selection) string {
+		m[allianceNums[8-i]] = info.Slice(3, 6).Map(func(j int, q *goquery.Selection) string {
 			return trimWhitespace(q.Text())
 		})
 	})
@@ -207,7 +206,7 @@ func scrapeAdvanceMatch(eventCode, matchNumber string, year, round int) (Match, 
 		return s.Find("td").Length() > 1
 	})
 
-	if trs.Length() <= 1 || (trs.Length() - 1) < (match + 2) {
+	if trs.Length() <= 1 || (trs.Length()-1) < (match+2) {
 		return Match{}, ErrNoData
 	}
 
@@ -228,7 +227,11 @@ func getDoc(url string) (*goquery.Document, error) {
 	docChan := make(chan *goquery.Document, 1)
 	errChan := make(chan error, 1)
 	go func() {
-		doc, err := goquery.NewDocument(url)
+		client := &http.Client{}
+		req, _ := http.NewRequest("GET", url, nil)
+		req.Header.Set("Referer", "usfirst.org")
+		res, _ := client.Do(req)
+		doc, err := goquery.NewDocumentFromResponse(res)
 		if err != nil {
 			errChan <- err
 		}
