@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
